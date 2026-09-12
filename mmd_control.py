@@ -1,12 +1,15 @@
-"""克拉蕾 简易行走 / 跳跃控制脚本 (Blender 5.2 + mmd_tools)
+"""MMD 角色 简易行走 / 跳跃控制脚本 (Blender 5.2 + mmd_tools)
 
 GUI 用法:
-    Scripting 工作区打开本文件 -> Run Script, 然后在 3D 视图按 N, 切到 "克拉蕾" 页签。
+    Scripting 工作区打开本文件 -> Run Script, 然后在 3D 视图按 N, 切到 "MMD 控制" 页签。
+    场景里已有骨架就直接用, 没有才导入 MODEL 指向的 pmx。
       · 键盘控制: W/S 前进后退, A/D 转向, Shift 加速, 空格 跳跃, Esc 退出
-      · 烘焙行走 / 烘焙跳跃: 生成关键帧动作 (克拉蕾_Walk / 克拉蕾_Jump), 可播放或渲染
+      · 烘焙行走 / 烘焙跳跃: 生成关键帧动作 (MMD_Walk / MMD_Jump), 可播放或渲染
       · 复位: 清除全部姿势
 无界面自检:
-    blender -b --factory-startup --python 克拉蕾_control.py -- --selftest [--render]
+    blender -b --factory-startup --python mmd_control.py -- --selftest [--render] [--model <pmx>]
+
+动作参数以身高 1.55 单位为基准, 换成别的模型时按实际身高自动缩放。
 """
 import math
 import os
@@ -48,13 +51,40 @@ JUMP_HEIGHT = 0.45
 CROUCH_TIME = 0.12
 CROUCH_DEPTH = 0.11
 LAND_TIME = 0.18
+REF_HEIGHT = 1.55       # tuning above is authored for this body height
+_BASE_TUNING = None
+
+
+def scale_tuning(height):
+    """Rescale the length-based tuning to the actual model height."""
+    global _BASE_TUNING, STRIDE, FOOT_LIFT, WALK_SPEED, BOB, WALK_DIP, SWAY
+    global JUMP_HEIGHT, CROUCH_DEPTH
+    if _BASE_TUNING is None:
+        _BASE_TUNING = (STRIDE, FOOT_LIFT, WALK_SPEED, BOB, WALK_DIP, SWAY,
+                        JUMP_HEIGHT, CROUCH_DEPTH)
+    k = max(0.2, min(5.0, height / REF_HEIGHT))
+    (STRIDE, FOOT_LIFT, WALK_SPEED, BOB, WALK_DIP, SWAY,
+     JUMP_HEIGHT, CROUCH_DEPTH) = [v * k for v in _BASE_TUNING]
+    return k
+
+
+def model_height(arm):
+    meshes = [o for o in bpy.data.objects
+              if o.type == "MESH" and o.find_armature() is arm]
+    if not meshes:
+        meshes = [o for o in bpy.data.objects if o.type == "MESH"]
+    if not meshes:
+        return REF_HEIGHT
+    return max((o.matrix_world @ Vector(c)).z for o in meshes for c in o.bound_box)
+
 
 def find_armature(context=None):
-    """Locate the 克拉蕾 armature, importing the pmx once if the scene is empty."""
+    """Locate the character armature, importing MODEL once if the scene has none."""
+    if context is not None:
+        active = getattr(context, "object", None)
+        if active is not None and active.type == "ARMATURE":
+            return active
     arms = [o for o in bpy.data.objects if o.type == "ARMATURE"]
-    for a in arms:
-        if "克拉蕾" in a.name:
-            return a
     if arms:
         return arms[0]
     if not os.path.exists(MODEL):
@@ -78,6 +108,8 @@ class Rig:
         self.arm = arm
         self.pb = arm.pose.bones
         self._basis = {}
+        self.height = model_height(arm)
+        self.k = scale_tuning(self.height)
 
     def _b(self, name):
         m = self._basis.get(name)
@@ -271,13 +303,13 @@ def bake_walk(rig, scene, cycles=2, run=False):
     st = State()
     st.speed = speed
     total = per_cycle * cycles
-    start_action(rig.arm, "克拉蕾_Walk")
+    start_action(rig.arm, "MMD_Walk")
     for i in range(total + 1):
         st.phase = (i / per_cycle) % 1.0
         st.pos = Vector((0.0, -speed * i / fps))
         apply_pose(rig, st)
         key_pose(rig, 1 + i)
-    finish_action(rig.arm, "克拉蕾_Walk", scene, 1 + total, linear_root=True)
+    finish_action(rig.arm, "MMD_Walk", scene, 1 + total, linear_root=True)
     return per_cycle, speed
 
 
@@ -287,7 +319,7 @@ def bake_jump(rig, scene, fwd=0.0):
     st = State()
     st.speed = WALK_SPEED * fwd
     trigger = max(1, int(0.2 * fps))
-    start_action(rig.arm, "克拉蕾_Jump")
+    start_action(rig.arm, "MMD_Jump")
     launched, tail, i = False, 0.0, 0
     while True:
         step(st, dt, fwd=fwd, jump=(i == trigger))
@@ -299,7 +331,7 @@ def bake_jump(rig, scene, fwd=0.0):
             tail += dt
         if tail > 0.35 or i > fps * 6:
             break
-    finish_action(rig.arm, "克拉蕾_Jump", scene, i)
+    finish_action(rig.arm, "MMD_Jump", scene, i)
     return i
 
 
@@ -325,7 +357,7 @@ class CLARET_OT_control(bpy.types.Operator):
         self._timer = wm.event_timer_add(1.0 / 60.0, window=context.window)
         wm.modal_handler_add(self)
         context.workspace.status_text_set(
-            "克拉蕾: W/S 前后 · A/D 转向 · Shift 加速 · 空格 跳跃 · Esc 退出")
+            "MMD: W/S 前后 · A/D 转向 · Shift 加速 · 空格 跳跃 · Esc 退出")
         return {"RUNNING_MODAL"}
 
     def modal(self, context, event):
@@ -382,10 +414,10 @@ class CLARET_OT_bake(bpy.types.Operator):
         scene = context.scene
         if self.kind in ("WALK", "RUN"):
             per_cycle, speed = bake_walk(rig, scene, cycles=2, run=self.kind == "RUN")
-            self.report({"INFO"}, "克拉蕾_Walk: %d 帧/步循环, 速度 %.2f" % (per_cycle, speed))
+            self.report({"INFO"}, "MMD_Walk: %d 帧/步循环, 速度 %.2f" % (per_cycle, speed))
         else:
             n = bake_jump(rig, scene, fwd=1.0 if self.kind == "JUMP_FWD" else 0.0)
-            self.report({"INFO"}, "克拉蕾_Jump: %d 帧" % n)
+            self.report({"INFO"}, "MMD_Jump: %d 帧" % n)
         return {"FINISHED"}
 
 
@@ -407,10 +439,10 @@ class CLARET_OT_reset(bpy.types.Operator):
 
 
 class CLARET_PT_panel(bpy.types.Panel):
-    bl_label = "克拉蕾 控制"
+    bl_label = "MMD 角色控制"
     bl_space_type = "VIEW_3D"
     bl_region_type = "UI"
-    bl_category = "克拉蕾"
+    bl_category = "MMD 控制"
 
     def draw(self, context):
         col = self.layout.column(align=True)
@@ -503,6 +535,8 @@ def selftest(do_render=False):
     assert arm is not None, "no armature"
     rig = Rig(arm)
     print("[selftest] armature:", arm.name)
+    print("[selftest] height=%.3f tuning scale=%.3f (stride=%.3f jump=%.3f)"
+          % (rig.height, rig.k, STRIDE, JUMP_HEIGHT))
     missing = [n for n in KEYED if n not in rig.pb]
     assert not missing, "missing bones: %s" % missing
 
@@ -521,15 +555,15 @@ def selftest(do_render=False):
     y0 = sample(1, B_CENTER).y
     y1 = sample(1 + per_cycle, B_CENTER).y
     print("[selftest] center y: %.3f -> %.3f (per cycle)" % (y0, y1))
-    assert y1 < y0 - 0.3, "body did not move forward"
+    assert y1 < y0 - 0.3 * rig.k, "body did not move forward"
     stance = [sample(1 + int(per_cycle * f), "足首.L") for f in (0.06, 0.18, 0.30, 0.42)]
     slide = max(p.y for p in stance) - min(p.y for p in stance)
     lift = max(abs(p.z - stance[0].z) for p in stance)
     print("[selftest] planted foot slide=%.4f lift=%.4f (world)" % (slide, lift))
-    assert slide < 0.03 and lift < 0.02, "stance foot slides"
+    assert slide < 0.03 * rig.k and lift < 0.02 * rig.k, "stance foot slides"
     swing = [sample(1 + int(per_cycle * f), "足首.L").z for f in (0.55, 0.75, 0.95)]
     print("[selftest] swing foot z:", [round(v, 4) for v in swing])
-    assert max(swing) > stance[0].z + 0.05, "foot never lifts"
+    assert max(swing) > stance[0].z + 0.05 * rig.k, "foot never lifts"
 
     n = bake_jump(rig, scene)
     zs = []
@@ -540,9 +574,9 @@ def selftest(do_render=False):
     base = zs[0]
     print("[selftest] jump action frames=%d peak=+%.3f dip=%.3f"
           % (n, max(zs) - base, min(zs) - base))
-    assert max(zs) - base > 0.3, "no jump height"
-    assert min(zs) - base < -0.05, "no crouch"
-    assert abs(zs[-1] - base) < 0.02, "did not settle back"
+    assert max(zs) - base > 0.3 * rig.k, "no jump height"
+    assert min(zs) - base < -0.05 * rig.k, "no crouch"
+    assert abs(zs[-1] - base) < 0.02 * rig.k, "did not settle back"
 
     outdir = os.path.join(os.path.dirname(MODEL), "render", "control")
     if do_render:
@@ -559,6 +593,8 @@ if __name__ == "__main__":
     unregister()
     register()
     argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
+    if "--model" in argv:
+        MODEL = argv[argv.index("--model") + 1]
     if "--selftest" in argv:
         selftest(do_render="--render" in argv)
 

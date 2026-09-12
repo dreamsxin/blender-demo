@@ -1,4 +1,9 @@
-"""Import 克拉蕾.pmx and render turntable-style stills with Blender 5.2 + mmd_tools."""
+"""Import an MMD .pmx model and render three stills with Blender 5.2 + mmd_tools.
+
+    blender -b --factory-startup --python render_pmx.py -- --model <pmx> [--out <dir>] [--name <prefix>]
+
+Without --model it falls back to 克拉蕾.
+"""
 import math
 import os
 import sys
@@ -8,11 +13,34 @@ import bpy
 from mathutils import Vector
 
 MODEL = r"D:\work\blender\克拉蕾\克拉蕾.pmx"
-OUTDIR = r"D:\work\blender\克拉蕾\render"
+OUTDIR = ""
+NAME = ""
+SCALE = 0.08
 RES = (1080, 1440)
 SAMPLES = 64
 # (name, azimuth deg from -Y front, elevation deg)
 VIEWS = [("front", 0, 8), ("three_quarter", 35, 10), ("side", 85, 8)]
+
+
+def parse_args():
+    global MODEL, OUTDIR, NAME, SCALE
+    argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
+    for flag in ("--model", "--out", "--name", "--scale"):
+        if flag not in argv:
+            continue
+        value = argv[argv.index(flag) + 1]
+        if flag == "--model":
+            MODEL = value
+        elif flag == "--out":
+            OUTDIR = value
+        elif flag == "--name":
+            NAME = value
+        else:
+            SCALE = float(value)
+    if not OUTDIR:
+        OUTDIR = os.path.join(os.path.dirname(MODEL), "render")
+    if not NAME:
+        NAME = os.path.splitext(os.path.basename(MODEL))[0]
 
 
 def log(msg):
@@ -27,7 +55,7 @@ def clean_scene():
 def import_model():
     addon_utils.enable("bl_ext.user_default.mmd_tools", default_set=False)
     bpy.ops.mmd_tools.import_model(
-        filepath=MODEL, scale=0.08, types={"MESH", "ARMATURE", "MORPHS"},
+        filepath=MODEL, scale=SCALE, types={"MESH", "ARMATURE", "MORPHS"},
         clean_model=True, log_level="ERROR",
     )
     meshes = [o for o in bpy.data.objects if o.type == "MESH"]
@@ -148,6 +176,8 @@ def calibrate_exposure(cam, target, dist, tmpdir, aim=0.46):
             total += 0.2126 * px[i] + 0.7152 * px[i + 1] + 0.0722 * px[i + 2]
             n += 1
     bpy.data.images.remove(img)
+    if os.path.exists(probe):
+        os.remove(probe)                     # calibration scratch file, not a deliverable
     scn.render.resolution_percentage = prev_pct
     scn.render.film_transparent = prev_transparent
     if prev_samples is not None:
@@ -163,6 +193,8 @@ def calibrate_exposure(cam, target, dist, tmpdir, aim=0.46):
 
 
 def main():
+    parse_args()
+    log(f"model: {MODEL}")
     os.makedirs(OUTDIR, exist_ok=True)
     clean_scene()
     meshes = import_model()
@@ -182,7 +214,7 @@ def main():
     written = []
     for name, az, el in VIEWS:
         place_camera(cam, target, dist, az, el)
-        path = os.path.join(OUTDIR, f"克拉蕾_{name}.png")
+        path = os.path.join(OUTDIR, f"{NAME}_{name}.png")
         bpy.context.scene.render.filepath = path
         log(f"rendering {name} -> {path}")
         bpy.ops.render.render(write_still=True)
