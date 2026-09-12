@@ -31,6 +31,8 @@ blender-demo/
    │  └─ moe-brothers/    # 萌三兄弟
    ├─ product/            # 产品 / 包装类
    │  └─ toy-blister/     # Ya Ya 90s 泡罩包装 (程序化建模 + Cycles 渲染)
+   ├─ props/              # 道具 / 单体资产
+   │  └─ crystal-sword/   # 水晶幻想中式宝剑 (程序化建模 + Cycles 渲染)
    └─ game/               # 游戏 demo（预留，约定见 demos/game/README.md）
 ```
 
@@ -77,3 +79,6 @@ AI 会话的上下文靠**文档 + git log**恢复，因此：
     脚本默认路径改为按 `repo_root()` 推导；顺手渲出 南宫羽（默认服装）三视图。
   - 新增 `demos/product/toy-blister/`：程序化生成 Ya Ya 90 年代泡罩包装（Q 版人物 + 6 个配件泡罩 +
     卡通篮球场底板 + 标题文字），Cycles 出图，详见该 demo 的 README。
+  - 新增 `demos/props/crystal-sword/`：程序化生成水晶幻想中式宝剑（菱形截面剑身 + 内部冷光剑芯 +
+    云纹剑格剑首 + 缠绳剑柄 + 红剑穗 + 漂浮碎晶），暗调布光 Cycles 出图。
+  - 约定补充：脚本跑完顺手保存 `.blend`，脚本与场景一起入库。
