@@ -350,7 +350,7 @@ def build_bubbles():
 
 
 def build_figure():
-    """Q 版人物: 头身比 1:2.5, 参考造型是小马尾 + 玫红外套 + 绿格子裙 + 黄鞋。"""
+    """Q 版人物: 头身比 1:2.5, 造型取两张参考照的元素 —— 高马尾 + 粉色短袖 + 格子裙 + 小手镯。"""
     fx = FIG_CENTER[0]
     fy = -FIG_BUBBLE[1] * 0.52          # 站在泡罩中间偏前
     base = 0.30
@@ -360,12 +360,14 @@ def build_figure():
 
     skin = mat("Skin", (0.99, 0.80, 0.68), roughness=0.42, layer_lines=0.20)
     hair_m = mat("Hair", (0.11, 0.09, 0.10), roughness=0.34, layer_lines=0.15)
-    jacket = mat("Jacket", (0.74, 0.09, 0.36), roughness=0.52, layer_lines=0.18)
-    pants = mat("Pants", (0.52, 0.08, 0.24), roughness=0.55, layer_lines=0.18)
-    dress = plaid_mat("DressPlaid", (0.42, 0.62, 0.36), (0.93, 0.95, 0.90),
-                      (0.86, 0.40, 0.30))
-    shoe = mat("Shoe", (0.96, 0.79, 0.22), roughness=0.40, layer_lines=0.2)
-    white = mat("Collar", (0.97, 0.97, 0.94), roughness=0.40, layer_lines=0.15)
+    tee = mat("Tee", (0.97, 0.66, 0.73), roughness=0.52, layer_lines=0.18)
+    print_m = mat("TeePrint", (0.55, 0.74, 0.93), roughness=0.45)
+    dress = plaid_mat("SkirtPlaid", (0.97, 0.95, 0.96), (0.98, 0.78, 0.85),
+                      (0.58, 0.76, 0.94))
+    shoe = mat("Shoe", (0.97, 0.96, 0.94), roughness=0.40, layer_lines=0.2)
+    shoe_sole = mat("ShoeSole", (0.97, 0.70, 0.76), roughness=0.45)
+    white = mat("Collar", (0.99, 0.98, 0.96), roughness=0.40, layer_lines=0.15)
+    silver = mat("Bangle", (0.86, 0.87, 0.90), roughness=0.18, metallic=0.9)
     eye_m = mat("Eye", (0.09, 0.07, 0.09), roughness=0.05, coat=1.0)
     glint = mat("Glint", (1.0, 1.0, 1.0), roughness=0.03, coat=1.0)
     mouth_m = mat("Mouth", (0.66, 0.22, 0.26), roughness=0.30)
@@ -375,22 +377,28 @@ def build_figure():
     head_r = FIG_HEIGHT / 2.5 / 2.0                     # 0.36
     head_z = base + FIG_HEIGHT - head_r                 # 1.74
 
-    # 鞋 + 腿
+    # 鞋 + 腿 (光腿, 夏天造型)
     for s in (-1, 1):
         rounded_box("Shoe%d" % s, (0.15, 0.24, 0.10), radius=0.045, segments=6,
-                    material=shoe, location=P(0.115 * s, -0.02, base + 0.05))
-        tube("Leg%d" % s, 0.058, 0.052, 0.30, pants, P(0.108 * s, 0.0, base + 0.24))
-    # 裙 (锥台) + 上身 + 领子
-    tube("Dress", 0.30, 0.165, 0.62, dress, P(0, 0, base + 0.62))
-    tube("Torso", 0.175, 0.20, 0.30, jacket, P(0, 0, base + 1.00))
-    ring("Collar", 0.16, 0.05, white, P(0, -0.01, base + 1.12), rotation=(0, 0, 0))
-    # 手臂: 稍微外张, 袖口 + 手
+                    material=shoe, location=P(0.115 * s, -0.02, base + 0.06))
+        rounded_box("Sole%d" % s, (0.16, 0.25, 0.032), radius=0.015, segments=4,
+                    material=shoe_sole, location=P(0.115 * s, -0.02, base + 0.015))
+        tube("Leg%d" % s, 0.058, 0.052, 0.30, skin, P(0.108 * s, 0.0, base + 0.24))
+    # 裙 (锥台) + 短袖上衣 + 领口
+    tube("Skirt", 0.30, 0.165, 0.62, dress, P(0, 0, base + 0.62))
+    tube("Tee", 0.175, 0.20, 0.32, tee, P(0, 0, base + 1.01))
+    ball("TeePrint", 0.075, print_m, P(0.02, -0.185, base + 1.02),
+         scale=(0.55, 0.18, 1.25))
+    ring("Collar", 0.15, 0.035, white, P(0, -0.01, base + 1.14), rotation=(0, 0, 0))
+    # 手臂: 短袖 + 光手臂 + 一只手镯
     for s in (-1, 1):
-        tube("Arm%d" % s, 0.062, 0.052, 0.44, jacket,
-             P(0.235 * s, 0.0, base + 0.90), rotation=(0, s * 0.20, 0))
-        ring("Cuff%d" % s, 0.055, 0.018, white, P(0.283 * s, 0.0, base + 0.70),
-             rotation=(0, s * 0.20, 0))
-        ball("Hand%d" % s, 0.062, skin, P(0.292 * s, 0.0, base + 0.645))
+        tube("Sleeve%d" % s, 0.068, 0.058, 0.16, tee,
+             P(0.235 * s, 0.0, base + 1.05), rotation=(0, s * 0.20, 0))
+        tube("Arm%d" % s, 0.050, 0.044, 0.34, skin,
+             P(0.262 * s, 0.0, base + 0.82), rotation=(0, s * 0.20, 0))
+        ball("Hand%d" % s, 0.060, skin, P(0.292 * s, 0.0, base + 0.645))
+    ring("Bangle", 0.055, 0.010, silver, P(-0.285, 0.0, base + 0.70),
+         rotation=(0, -0.20, 0))
     # 头 + 脖子
     tube("Neck", 0.075, 0.075, 0.10, skin, P(0, 0, base + 1.15))
     ball("Head", head_r, skin, P(0, 0, head_z), scale=(1.0, 0.94, 0.98))
@@ -414,27 +422,31 @@ def build_hair(P, head_r, head_z, hair_m, clip_m):
          scale=(1.0, 0.95, 1.0))
     ball("HairBangs", head_r * 1.04, hair_m, P(0, -0.02, head_z + 0.20),
          scale=(1.0, 0.98, 0.42))
-    for s in (-1, 1):
-        ball("Pigtail%d" % s, 0.155, hair_m, P(0.365 * s, -0.02, head_z + 0.06),
-             scale=(0.92, 1.0, 1.05))
-        ring("Tie%d" % s, 0.075, 0.024, clip_m, P(0.245 * s, -0.02, head_z + 0.09),
-             rotation=(0, math.pi / 2, 0))
-        rounded_box("Clip%d" % s, (0.075, 0.032, 0.036), radius=0.012, segments=4,
-                    material=clip_m, location=P(0.25 * s, -0.305, head_z + 0.14))
+    # 高马尾: 头顶偏后一个发团 + 一束搭在侧后方的发尾 + 发圈 (正面能看见)
+    ball("HairBun", 0.155, hair_m, P(0.02, 0.14, head_z + 0.36), scale=(1.0, 1.0, 0.85))
+    ring("HairTie", 0.085, 0.026, clip_m, P(0.05, 0.16, head_z + 0.25),
+         rotation=(0.30, 0, -0.35))
+    tube("Ponytail", 0.115, 0.050, 0.68, hair_m, P(0.40, 0.15, head_z - 0.24),
+         rotation=(0.16, 0, -0.26))
+    rounded_box("Clip", (0.075, 0.032, 0.036), radius=0.012, segments=4,
+                material=clip_m, location=P(-0.25, -0.305, head_z + 0.14))
 
 
 def build_accessories():
-    """右侧 6 个配件: 篮球 / 球鞋 / 小书包 / 水壶 / 发夹 / 跳绳。"""
+    """右侧 6 个配件: 篮球 / 球鞋 / 小书包 / 水壶 / 蝴蝶 / 捕虫网。"""
     orange = mat("BallOrange", (0.92, 0.44, 0.12), roughness=0.55, layer_lines=0.25)
     seam = mat("BallSeam", (0.10, 0.08, 0.08), roughness=0.5)
     shoe_w = mat("ShoeWhite", (0.95, 0.95, 0.92), roughness=0.45, layer_lines=0.2)
-    shoe_c = mat("ShoeRed", (0.85, 0.22, 0.28), roughness=0.45, layer_lines=0.2)
+    shoe_c = mat("ShoePink", (0.96, 0.60, 0.70), roughness=0.45, layer_lines=0.2)
     bag_m = mat("Bag", (0.36, 0.55, 0.82), roughness=0.55, layer_lines=0.2)
     bag_d = mat("BagDetail", (0.99, 0.78, 0.24), roughness=0.45)
     bottle = mat("Bottle", (0.30, 0.72, 0.62), roughness=0.35, coat=0.5)
     cap_m = mat("Cap", (0.95, 0.35, 0.45), roughness=0.35)
-    rope_m = mat("Rope", (0.98, 0.84, 0.30), roughness=0.5)
-    grip_m = mat("Grip", (0.42, 0.30, 0.72), roughness=0.4)
+    wing_m = mat("Wing", (0.24, 0.17, 0.14), roughness=0.42, layer_lines=0.25)
+    spot_m = mat("WingSpot", (0.36, 0.86, 0.72), roughness=0.35)
+    body_m = mat("BugBody", (0.13, 0.11, 0.10), roughness=0.4)
+    net_y = mat("NetFrame", (0.99, 0.82, 0.20), roughness=0.35, coat=0.4)
+    net_m = mat("NetMesh", (0.95, 0.96, 0.94), roughness=0.45, transmission=0.55)
 
     ax0, ax1 = ACC_COLS
     z0, z1, z2 = ACC_ROWS
@@ -461,18 +473,26 @@ def build_accessories():
     # 水壶 (右中)
     tube("Bottle", 0.072, 0.068, 0.26, bottle, (ax1, y, z1 - 0.02))
     tube("BottleCap", 0.042, 0.042, 0.07, cap_m, (ax1, y, z1 + 0.145))
-    # 发夹两只 (左下)
-    for i, s in enumerate((-1, 1)):
-        rounded_box("HairClip%d" % i, (0.17, 0.042, 0.048), radius=0.017, segments=4,
-                    material=cap_m if i else bag_d,
-                    location=(ax0, y, z0 + 0.085 * s))
-        ball("ClipBead%d" % i, 0.033, bag_d if i else cap_m,
-             (ax0 - 0.068, y, z0 + 0.085 * s))
-    # 跳绳 (右下)
-    ring("JumpRope", 0.125, 0.018, rope_m, (ax1, y, z0 + 0.03), rotation=(0.25, 0, 0))
+    # 蝴蝶 (左下): 参考照片里停在手上的青凤蝶
+    ball("BugBody", 0.026, body_m, (ax0, y, z0), scale=(1.0, 1.1, 3.6))
     for s in (-1, 1):
-        tube("RopeGrip%d" % s, 0.028, 0.028, 0.13, grip_m,
-             (ax1 + 0.085 * s, y - 0.02, z0 - 0.14), rotation=(0, 0.12 * s, 0))
+        ball("WingTop%d" % s, 0.098, wing_m, (ax0 + 0.098 * s, y - 0.006, z0 + 0.060),
+             scale=(1.5, 0.10, 0.95))
+        ball("WingBot%d" % s, 0.070, wing_m, (ax0 + 0.070 * s, y - 0.004, z0 - 0.085),
+             scale=(1.25, 0.10, 1.5))
+        ball("WingSpotA%d" % s, 0.042, spot_m, (ax0 + 0.100 * s, y - 0.014, z0 + 0.040),
+             scale=(1.6, 0.09, 0.50))
+        ball("WingSpotB%d" % s, 0.026, spot_m, (ax0 + 0.078 * s, y - 0.012, z0 - 0.085),
+             scale=(1.3, 0.09, 1.10))
+        tube("WingTail%d" % s, 0.016, 0.003, 0.11, wing_m,
+             (ax0 + 0.088 * s, y - 0.004, z0 - 0.185), rotation=(0, s * 0.45, 0))
+        tube("Antenna%d" % s, 0.004, 0.003, 0.09, body_m,
+             (ax0 + 0.030 * s, y, z0 + 0.120), rotation=(0, s * 0.55, 0))
+    # 捕虫网 (右下)
+    ring("NetHoop", 0.105, 0.013, net_y, (ax1, y, z0 + 0.14), rotation=(math.pi / 2, 0, 0))
+    tube("NetBag", 0.100, 0.012, 0.13, net_m, (ax1, y + 0.055, z0 + 0.14),
+         rotation=(math.pi / 2, 0, 0))
+    tube("NetHandle", 0.019, 0.017, 0.26, net_y, (ax1, y, z0 - 0.10))
 
 
 def build_studio():
