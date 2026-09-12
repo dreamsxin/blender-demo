@@ -1,14 +1,14 @@
 # mmd_control.py 使用说明
 
 MMD 角色（`.pmx`）的简易控制脚本：**键盘实时控制行走/跳跃**，以及把动作**烘焙成关键帧**便于播放和渲染。
-已在 `克拉蕾/克拉蕾.pmx` 与 `南宫羽_狂想缪斯/南宫羽.pmx` 上验证通过。
+已在 `demos/character/claret/克拉蕾.pmx` 与 `demos/character/nangongyu-muse/南宫羽.pmx` 上验证通过。
 
 - 依赖：Blender 5.2.1 LTS + mmd_tools 扩展（`bl_ext.user_default.mmd_tools`）
-- 脚本位置：`mmd_control.py`；动作参数以身高 1.55 单位为基准，换模型时按实际身高自动缩放
+- 脚本位置：`scripts/mmd_control.py`；动作参数以身高 1.55 单位为基准，换模型时按实际身高自动缩放
 
 ## 一、GUI 用法
 
-1. 打开 Blender，切到 **Scripting** 工作区 → Open → 选 `D:\work\blender\mmd_control.py` → **Run Script**。
+1. 打开 Blender，切到 **Scripting** 工作区 → Open → 选 `D:\work\blender\scripts\mmd_control.py` → **Run Script**。
    - 场景里已有骨架就直接用（优先用当前活动对象），不重复导入。
    - 场景里没有骨架时，才导入脚本顶部 `MODEL` 指向的 pmx（默认克拉蕾，scale 0.08）。
    - 想控制别的模型：先自己用 mmd_tools 导入，或改 `MODEL` 常量。
@@ -39,8 +39,8 @@ MMD 角色（`.pmx`）的简易控制脚本：**键盘实时控制行走/跳跃*
 
 ```powershell
 & "D:\Program Files\Blender Foundation\Blender 5.2\blender.exe" -b --factory-startup `
-  --python "D:\work\blender\mmd_control.py" -- --selftest --render `
-  --model "D:\work\blender\南宫羽_狂想缪斯\南宫羽.pmx"
+  --python "D:\work\blender\scripts\mmd_control.py" -- --selftest --render `
+  --model "D:\work\blender\demos\character\nangongyu-muse\南宫羽.pmx"
 ```
 
 - `--selftest`：烘焙行走与跳跃，并断言：支撑脚不打滑、摆动脚有抬起、身体向前位移、跳跃有下蹲/腾空/回落（阈值随身高缩放）。

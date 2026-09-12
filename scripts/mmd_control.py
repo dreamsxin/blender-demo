@@ -7,7 +7,7 @@ GUI 用法:
       · 烘焙行走 / 烘焙跳跃: 生成关键帧动作 (MMD_Walk / MMD_Jump), 可播放或渲染
       · 复位: 清除全部姿势
 无界面自检:
-    blender -b --factory-startup --python mmd_control.py -- --selftest [--render] [--model <pmx>]
+    blender -b --factory-startup --python scripts/mmd_control.py -- --selftest [--render] [--model <pmx>]
 
 动作参数以身高 1.55 单位为基准, 换成别的模型时按实际身高自动缩放。
 """
@@ -19,7 +19,16 @@ import addon_utils
 import bpy
 from mathutils import Matrix, Vector
 
-MODEL = r"D:\work\blender\克拉蕾\克拉蕾.pmx"
+
+def repo_root():
+    """Repo root = parent of scripts/, so the defaults survive moving the repo."""
+    here = globals().get("__file__")
+    if here:
+        return os.path.dirname(os.path.dirname(os.path.abspath(here)))
+    return r"D:\work\blender"
+
+
+MODEL = os.path.join(repo_root(), "demos", "character", "claret", "克拉蕾.pmx")
 IMPORT_SCALE = 0.08
 
 # --- rig bone names (mmd_tools naming) ---

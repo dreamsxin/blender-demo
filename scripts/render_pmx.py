@@ -1,8 +1,8 @@
 """Import an MMD .pmx model and render three stills with Blender 5.2 + mmd_tools.
 
-    blender -b --factory-startup --python render_pmx.py -- --model <pmx> [--out <dir>] [--name <prefix>]
+    blender -b --factory-startup --python scripts/render_pmx.py -- --model <pmx> [--out <dir>] [--name <prefix>]
 
-Without --model it falls back to 克拉蕾.
+Without --model it falls back to demos/character/claret.
 """
 import math
 import os
@@ -12,7 +12,16 @@ import addon_utils
 import bpy
 from mathutils import Vector
 
-MODEL = r"D:\work\blender\克拉蕾\克拉蕾.pmx"
+
+def repo_root():
+    """Repo root = parent of scripts/, so the defaults survive moving the repo."""
+    here = globals().get("__file__")
+    if here:
+        return os.path.dirname(os.path.dirname(os.path.abspath(here)))
+    return r"D:\work\blender"
+
+
+MODEL = os.path.join(repo_root(), "demos", "character", "claret", "克拉蕾.pmx")
 OUTDIR = ""
 NAME = ""
 SCALE = 0.08

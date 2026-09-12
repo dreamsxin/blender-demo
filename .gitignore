@@ -1,19 +1,12 @@
 # 原始素材包（大，解压即得，不入库）
 *.zip
 
-# MMD 模型原始资源：可从对应 zip 重新解出
-克拉蕾/*.pmx
-克拉蕾/*.bmp
-克拉蕾/tex/
-克拉蕾/spa/
-南宫羽/*.pmx
-南宫羽/*.bmp
-南宫羽/tex/
-南宫羽/spa/
-南宫羽_狂想缪斯/*.pmx
-南宫羽_狂想缪斯/*.bmp
-南宫羽_狂想缪斯/tex/
-南宫羽_狂想缪斯/spa/
+# MMD 模型原始资源：可从对应素材包重新解出
+demos/character/**/*.pmx
+demos/character/**/*.bmp
+demos/character/**/tex/
+demos/character/**/spa/
 
-# Blender 自动备份
+# Blender 自动备份与渲染临时文件
 *.blend1
+**/render/probe.png
