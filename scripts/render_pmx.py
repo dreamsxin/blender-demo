@@ -2,7 +2,8 @@
 
     blender -b --factory-startup --python scripts/render_pmx.py -- --model <pmx> [--out <dir>] [--name <prefix>]
 
-Without --model it falls back to demos/character/claret.
+渲完顺手把场景存成 <模型目录>/<name>_render.blend (--blend 改路径, --no-blend 关掉,
+--no-render 只搭场景不渲图)。不给 --model 时用 demos/character/claret。
 """
 import math
 import os
@@ -24,6 +25,8 @@ def repo_root():
 MODEL = os.path.join(repo_root(), "demos", "character", "claret", "克拉蕾.pmx")
 OUTDIR = ""
 NAME = ""
+BLEND = ""
+DO_RENDER = True
 SCALE = 0.08
 RES = (1080, 1440)
 SAMPLES = 64
@@ -32,9 +35,9 @@ VIEWS = [("front", 0, 8), ("three_quarter", 35, 10), ("side", 85, 8)]
 
 
 def parse_args():
-    global MODEL, OUTDIR, NAME, SCALE
+    global MODEL, OUTDIR, NAME, SCALE, BLEND, DO_RENDER
     argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
-    for flag in ("--model", "--out", "--name", "--scale"):
+    for flag in ("--model", "--out", "--name", "--scale", "--blend"):
         if flag not in argv:
             continue
         value = argv[argv.index(flag) + 1]
@@ -44,12 +47,18 @@ def parse_args():
             OUTDIR = value
         elif flag == "--name":
             NAME = value
+        elif flag == "--blend":
+            BLEND = value
         else:
             SCALE = float(value)
+    if "--no-render" in argv:
+        DO_RENDER = False
     if not OUTDIR:
         OUTDIR = os.path.join(os.path.dirname(MODEL), "render")
     if not NAME:
         NAME = os.path.splitext(os.path.basename(MODEL))[0]
+    if not BLEND and "--no-blend" not in argv:
+        BLEND = os.path.join(os.path.dirname(MODEL), NAME + "_render.blend")
 
 
 def log(msg):
@@ -221,18 +230,26 @@ def main():
     calibrate_exposure(cam, target, dist, OUTDIR)
 
     written = []
-    for name, az, el in VIEWS:
-        place_camera(cam, target, dist, az, el)
-        path = os.path.join(OUTDIR, f"{NAME}_{name}.png")
-        bpy.context.scene.render.filepath = path
-        log(f"rendering {name} -> {path}")
-        bpy.ops.render.render(write_still=True)
-        ok = os.path.exists(path)
-        written.append((path, ok, os.path.getsize(path) if ok else 0))
+    if DO_RENDER:
+        for name, az, el in VIEWS:
+            place_camera(cam, target, dist, az, el)
+            path = os.path.join(OUTDIR, f"{NAME}_{name}.png")
+            bpy.context.scene.render.filepath = path
+            log(f"rendering {name} -> {path}")
+            bpy.ops.render.render(write_still=True)
+            ok = os.path.exists(path)
+            written.append((path, ok, os.path.getsize(path) if ok else 0))
+    else:
+        place_camera(cam, target, dist, *VIEWS[1][1:])
+
+    if BLEND:
+        os.makedirs(os.path.dirname(BLEND), exist_ok=True)
+        bpy.ops.wm.save_as_mainfile(filepath=BLEND)
+        log(f"saved scene -> {BLEND} ({os.path.getsize(BLEND)} bytes)")
 
     for path, ok, sz in written:
         log(f"RESULT ok={ok} size={sz} {path}")
-    if not all(ok for _, ok, _ in written):
+    if written and not all(ok for _, ok, _ in written):
         sys.exit(3)
 
 

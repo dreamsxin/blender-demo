@@ -29,6 +29,8 @@ blender-demo/
    │  ├─ coffee-cup/      # 咖啡杯 & 场景
    │  ├─ stool/           # 小凳子场景
    │  └─ moe-brothers/    # 萌三兄弟
+   ├─ product/            # 产品 / 包装类
+   │  └─ toy-blister/     # Ya Ya 90s 泡罩包装 (程序化建模 + Cycles 渲染)
    └─ game/               # 游戏 demo（预留，约定见 demos/game/README.md）
 ```
 
@@ -37,6 +39,9 @@ blender-demo/
 - **目录名用 ASCII slug**（小写 + 连字符），中文名写在 README 或该 demo 的 README 里；避免中文路径在 PowerShell / 工具链里踩坑。
 - 新增一类 demo 就在 `demos/` 下开一个类别目录（如 `demos/rendering/`、`demos/simulation/`），类别内每个 demo 一个 slug 目录。
 - 单个 demo 内部：工程文件放根目录，输出统一进 `render/`（动画预览进 `render/control/`），专属脚本进该 demo 的 `scripts/`。
+- **脚本和场景都保留**：脚本跑完会把场景存成 `.blend`（`render_pmx.py` → `<name>_render.blend`，
+  `mmd_control.py --selftest` → `<name>_control.blend`，toy-blister → `yaya_blister.blend`），
+  方便直接打开继续调；`.blend1` 备份不入库。
 - 通用脚本放仓库根 `scripts/`，默认路径基于 `repo_root()` 推导，不写死绝对路径。
 - 原始素材（`*.zip`、`*.pmx`、`tex/`、`spa/`）不入库，可从素材包重新解出，见 `.gitignore`。
 
@@ -70,3 +75,5 @@ AI 会话的上下文靠**文档 + git log**恢复，因此：
   - 渲出 南宫羽_狂想缪斯 三视图（身高 1.562，31225 顶点），并在该模型上跑通行走/跳跃自检与预览帧；克拉蕾 回归自检同样通过。
   - 规划并落地目录结构：`docs/` + `scripts/` + `demos/{character,modeling,game}`，目录名统一 ASCII slug；
     脚本默认路径改为按 `repo_root()` 推导；顺手渲出 南宫羽（默认服装）三视图。
+  - 新增 `demos/product/toy-blister/`：程序化生成 Ya Ya 90 年代泡罩包装（Q 版人物 + 6 个配件泡罩 +
+    卡通篮球场底板 + 标题文字），Cycles 出图，详见该 demo 的 README。

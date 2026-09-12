@@ -595,6 +595,10 @@ def selftest(do_render=False):
     if do_render:
         _preview_render(scene, arm, [1, 1 + per_cycle // 4, 1 + per_cycle // 2,
                                      1 + 3 * per_cycle // 4], outdir, prefix="walk")
+    blend = os.path.join(os.path.dirname(MODEL),
+                         os.path.splitext(os.path.basename(MODEL))[0] + "_control.blend")
+    bpy.ops.wm.save_as_mainfile(filepath=blend)
+    print("[selftest] saved scene -> %s (%d bytes)" % (blend, os.path.getsize(blend)))
     print("[selftest] ALL OK")
 
 
