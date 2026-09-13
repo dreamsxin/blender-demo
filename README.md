@@ -29,6 +29,8 @@ blender-demo/
    │  ├─ coffee-cup/      # 咖啡杯 & 场景
    │  ├─ stool/           # 小凳子场景
    │  └─ moe-brothers/    # 萌三兄弟
+   ├─ architecture/       # 建筑
+   │  └─ princess-castle/ # 公主城堡 (程序化建模 + Cycles 渲染)
    ├─ product/            # 产品 / 包装类
    │  └─ toy-blister/     # Ya Ya 90s 泡罩包装 (程序化建模 + Cycles 渲染)
    ├─ props/              # 道具 / 单体资产
@@ -82,3 +84,5 @@ AI 会话的上下文靠**文档 + git log**恢复，因此：
   - 新增 `demos/props/crystal-sword/`：程序化生成水晶幻想中式宝剑（菱形截面剑身 + 内部冷光剑芯 +
     云纹剑格剑首 + 缠绳剑柄 + 红剑穗 + 漂浮碎晶），暗调布光 Cycles 出图。
   - 约定补充：脚本跑完顺手保存 `.blend`，脚本与场景一起入库。
+  - 新增 `demos/architecture/princess-castle/`：程序化生成公主城堡（主塔 + 四角塔 + 垛口城墙 +
+    拱券门楼 + 玫瑰窗 + 岩石台基，274 个物体），Nishita 天空 + 侧前日光，Cycles 出图。
