@@ -35,6 +35,8 @@ blender-demo/
    │  └─ toy-blister/     # Ya Ya 90s 泡罩包装 (程序化建模 + Cycles 渲染)
    ├─ props/              # 道具 / 单体资产
    │  └─ crystal-sword/   # 水晶幻想中式宝剑 (程序化建模 + Cycles 渲染)
+   ├─ scene/              # 场景 / 动画
+   │  └─ qingming-scroll/ # 清明上河图 低多边形长卷动画 (横移镜头 + EEVEE 出片)
    └─ game/               # 游戏 demo（预留，约定见 demos/game/README.md）
 ```
 
