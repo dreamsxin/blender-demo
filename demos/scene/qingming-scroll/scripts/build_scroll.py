@@ -15,9 +15,9 @@ import bmesh
 import bpy
 from mathutils import Vector
 
-SECONDS = 3.0
+SECONDS = 20.0
 FPS = 24
-RES_X = 1280
+RES_X = 1920
 SAMPLES = 32
 ENGINE = "eevee"
 STILL_ONLY = False
@@ -25,8 +25,14 @@ OUT_DIR = ""
 
 RIVER_HALF = 3.4            # 河道半宽
 BANK_H = 0.55               # 岸高
-SCROLL_FROM = -13.0         # 镜头起点 x
-SCROLL_TO = 9.0             # 镜头终点 x
+# 三段式长卷 (原作结构): 郊野 -> 汴河虹桥 -> 城内街市
+SEC_RURAL = (-46.0, -24.0)
+SEC_RIVER = (-24.0, 2.0)
+SEC_CITY = (2.0, 28.0)
+BRIDGE_X = -11.0            # 虹桥位置
+GATE_X = 5.0                # 城门楼位置
+SCROLL_FROM = -44.0         # 镜头起点 x
+SCROLL_TO = 26.0            # 镜头终点 x
 RNG = random.Random(20250912)
 
 
@@ -161,15 +167,198 @@ PEOPLE_COLORS = [(0.80, 0.30, 0.24), (0.24, 0.34, 0.55), (0.36, 0.46, 0.32),
 
 
 def terrain(P):
-    box("River", (60.0, RIVER_HALF * 2, 0.2), P["water"], (-2, 0, -0.10))
+    span, cx = 88.0, -9.0
+    box("River", (span, RIVER_HALF * 2, 0.2), P["water"], (cx, 0, -0.10))
     for s in (-1, 1):
-        box("Bank%d" % s, (60.0, 9.0, BANK_H), P["earth"],
-            (-2, s * (RIVER_HALF + 4.5), BANK_H / 2 - 0.02))
-        box("Road%d" % s, (60.0, 2.6, 0.06), P["road"],
-            (-2, s * (RIVER_HALF + 1.5), BANK_H + 0.01))
-        box("Quay%d" % s, (60.0, 0.5, 0.5), P["wood2"],
-            (-2, s * (RIVER_HALF + 0.2), BANK_H - 0.22))
-    box("Field", (60.0, 10.0, 0.1), P["grass"], (-2, 12.5, BANK_H - 0.02))
+        box("Bank%d" % s, (span, 9.0, BANK_H), P["earth"],
+            (cx, s * (RIVER_HALF + 4.5), BANK_H / 2 - 0.02))
+        box("Road%d" % s, (span, 2.6, 0.06), P["road"],
+            (cx, s * (RIVER_HALF + 1.5), BANK_H + 0.01))
+        box("Quay%d" % s, (span, 0.5, 0.5), P["wood2"],
+            (cx, s * (RIVER_HALF + 0.2), BANK_H - 0.22))
+    box("Meadow", (span, 12.0, 0.1), P["grass"], (cx, 13.5, BANK_H - 0.02))
+    # 郊野段: 田垄
+    for i in range(9):
+        x = SEC_RURAL[0] + 1.5 + i * 2.4
+        box("FieldPatch%d" % i, (2.0, 5.5, 0.05), P["grass"] if i % 2 else P["earth"],
+            (x, -(RIVER_HALF + 6.2), BANK_H + 0.02))
+    # 城内段: 石板街面
+    for s in (-1, 1):
+        box("Pave%d" % s, (SEC_CITY[1] - SEC_CITY[0], 3.4, 0.08), P["road"],
+            ((SEC_CITY[0] + SEC_CITY[1]) / 2, s * (RIVER_HALF + 1.7), BANK_H + 0.03))
+
+
+def quadruped(name, x, y, ang, P, kind="donkey"):
+    """驴 / 骆驼 / 牛: 一个身子四条腿, 低多边形够用。"""
+    body_c = {"donkey": (0.42, 0.36, 0.33), "camel": (0.72, 0.58, 0.36),
+              "ox": (0.30, 0.26, 0.24)}[kind]
+    m = mat(name + "Hide", body_c, roughness=0.75)
+    h = 0.46 if kind != "camel" else 0.62
+    box(name + "Body", (0.78, 0.34, 0.34), m, (x, y, BANK_H + h), (0, 0, ang))
+    for sx in (-0.26, 0.26):
+        for sy in (-0.12, 0.12):
+            cyl(name + "Leg", 0.045, 0.04, h - 0.12, m,
+                (x + sx * math.cos(ang) - sy * math.sin(ang),
+                 y + sx * math.sin(ang) + sy * math.cos(ang), BANK_H + (h - 0.12) / 2),
+                verts=6)
+    hx, hy = x + 0.46 * math.cos(ang), y + 0.46 * math.sin(ang)
+    box(name + "Neck", (0.22, 0.18, 0.26), m, (hx - 0.06, hy, BANK_H + h + 0.10),
+        (0, -0.5, ang))
+    box(name + "Head", (0.26, 0.16, 0.16), m, (hx + 0.08, hy, BANK_H + h + 0.22), (0, 0, ang))
+    if kind == "camel":
+        ico(name + "Hump", 0.22, m, (x, y, BANK_H + h + 0.22), scale=(1.0, 0.8, 0.7))
+    if kind != "camel":                      # 驮的货
+        box(name + "Load", (0.5, 0.42, 0.22), P["cloth"], (x, y, BANK_H + h + 0.26),
+            (0, 0, ang))
+
+
+def caravan(x0, y, P, people, n=5, kind="donkey"):
+    for i in range(n):
+        quadruped("Cara%d_%d" % (int(x0), i), x0 + i * 1.25, y + RNG.uniform(-0.2, 0.2),
+                  RNG.uniform(-0.12, 0.12), P, kind=kind)
+    people.append((x0 - 0.9, y + 0.35, BANK_H + 0.05))
+    people.append((x0 + n * 1.25 + 0.5, y - 0.3, BANK_H + 0.05))
+
+
+def palanquin(x, y, P, people):
+    """轿子: 轿厢 + 两根轿杠 + 前后两个轿夫。"""
+    box("SedanBody", (0.62, 0.56, 0.66), P["red"], (x, y, BANK_H + 0.62))
+    wedge("SedanRoof", 0.8, 0.74, 0.22, P["tile"], (x, y, BANK_H + 0.95), (0, 0, math.pi / 2))
+    for sy in (-0.32, 0.32):
+        cyl("SedanPole", 0.035, 0.035, 2.2, P["wood"], (x, y + sy, BANK_H + 0.62),
+            rot=(0, math.pi / 2, 0), verts=6)
+    people.append((x - 1.0, y, BANK_H + 0.05))
+    people.append((x + 1.0, y, BANK_H + 0.05))
+
+
+def ox_cart(x, y, P, people):
+    box("CartBed", (1.3, 0.8, 0.16), P["wood2"], (x, y, BANK_H + 0.42))
+    box("CartLoad", (1.0, 0.66, 0.4), P["cloth"], (x, y, BANK_H + 0.68))
+    for sy in (-0.44, 0.44):
+        cyl("CartWheel", 0.32, 0.32, 0.08, P["wood"], (x - 0.1, y + sy, BANK_H + 0.32),
+            rot=(math.pi / 2, 0, 0), verts=12)
+    cyl("CartShaft", 0.04, 0.04, 1.3, P["wood"], (x + 0.9, y, BANK_H + 0.40),
+        rot=(0, math.pi / 2, 0), verts=6)
+    quadruped("CartOx", x + 1.8, y, 0.0, P, kind="ox")
+    people.append((x + 0.55, y + 0.6, BANK_H + 0.05))
+
+
+def city_gate(x, P, people):
+    """城门楼: 城墙 + 券门 + 城台上的重檐门楼 (原作"城门"段的主体)。"""
+    sy = -(RIVER_HALF + 1.5)                 # 街道中心
+    wall_h, gate_half = 3.4, 1.35
+    for y0, y1 in ((-10.5, sy - gate_half), (sy + gate_half, -2.1)):
+        box("CityWall%d" % int(y0), (1.7, y1 - y0, wall_h), P["wall"],
+            (x, (y0 + y1) / 2, wall_h / 2))
+        n = max(2, int((y1 - y0) / 0.7))
+        for i in range(n):
+            box("CityMerlon%d_%d" % (int(y0), i), (1.8, 0.34, 0.34), P["wall"],
+                (x, y0 + (i + 0.5) * (y1 - y0) / n, wall_h + 0.17))
+    for i in range(11):                      # 券门
+        a = math.pi * i / 10
+        box("GateArch%d" % i, (1.86, 0.30, 0.22), P["tile"],
+            (x, sy + math.cos(a) * gate_half, BANK_H + 1.15 + math.sin(a) * gate_half),
+            (-a + math.pi / 2, 0, 0))
+    box("GateTower", (3.4, 4.6, 1.5), P["wall"], (x, sy, wall_h + 0.75))
+    box("GateTowerBase", (3.9, 5.1, 0.2), P["wood"], (x, sy, wall_h + 0.1))
+    wedge("GateRoof1", 5.2, 4.4, 0.9, P["tile"], (x, sy, wall_h + 1.5), (0, 0, 0))
+    box("GateTower2", (2.4, 3.2, 1.0), P["wall"], (x, sy, wall_h + 2.6))
+    wedge("GateRoof2", 3.9, 3.4, 0.8, P["tile"], (x, sy, wall_h + 3.1), (0, 0, 0))
+    box("GatePlaque", (0.12, 1.3, 0.5), P["red"], (x - 1.72, sy, wall_h + 0.9))
+    for i in range(5):                       # 进出城门的人
+        people.append((x + RNG.uniform(-2.0, 2.0), sy + RNG.uniform(-0.9, 0.9),
+                       BANK_H + 0.05))
+
+
+def rural_section(P, people):
+    """郊野段: 疏林、茅舍、田垄、驴队。"""
+    x0, x1 = SEC_RURAL
+    for i in range(16):
+        x = RNG.uniform(x0, x1)
+        y = -(RIVER_HALF + RNG.uniform(4.0, 8.0))
+        willow(x, y, P)
+    for i in range(7):
+        willow(RNG.uniform(x0, x1), RIVER_HALF + RNG.uniform(1.0, 7.0), P)
+    for i, x in enumerate((x0 + 3.0, x0 + 9.5, x0 + 15.0)):
+        house(x, -(RIVER_HALF + 6.6), -1, P, two_story=False, shop=False)
+    caravan(x0 + 5.0, -(RIVER_HALF + 1.4), P, people, n=5, kind="donkey")
+    caravan(x0 + 15.5, -(RIVER_HALF + 1.9), P, people, n=4, kind="donkey")
+    for i in range(10):                      # 田间行人
+        people.append((RNG.uniform(x0, x1), -(RIVER_HALF + RNG.uniform(1.0, 2.3)),
+                       BANK_H + 0.05))
+
+
+def river_section(P, people, boats):
+    """汴河虹桥段: 拱桥、密集船只、码头、纤夫、沿河酒楼。"""
+    x0, x1 = SEC_RIVER
+    rainbow_bridge(BRIDGE_X, P, people)
+    for i in range(8):
+        x = x0 + 1.6 + i * 2.9
+        if abs(x - BRIDGE_X) < 2.4:
+            continue
+        house(x, -(RIVER_HALF + 4.3), -1, P, two_story=(i % 3 == 1), shop=(i % 2 == 0))
+    for i in range(8):
+        x = x0 + 2.8 + i * 2.9
+        if abs(x - BRIDGE_X) < 2.4:
+            continue
+        house(x, RIVER_HALF + 3.6, 1, P, two_story=(i % 3 == 0), shop=(i % 2 == 1))
+    for x in (x0 + 3.5, BRIDGE_X + 4.5, x1 - 3.0):
+        stall(x, -(RIVER_HALF + 1.4), -1, P, people)
+    for x in (x0 + 6.0, BRIDGE_X + 2.0):
+        stall(x, RIVER_HALF + 1.4, 1, P, people)
+    for x in (x0 + 1.0, x0 + 6.5, BRIDGE_X + 3.0, x1 - 1.5):
+        willow(x, -(RIVER_HALF + 0.9), P)
+        willow(x + 1.8, RIVER_HALF + 0.9, P)
+    specs = ((x0 + 2.2, -1.1, 0.06, True, True), (x0 + 7.0, 1.3, -0.10, True, False),
+             (BRIDGE_X + 0.4, -0.7, 0.03, False, True), (BRIDGE_X + 4.2, 1.1, 0.12, True, False),
+             (x1 - 4.0, -1.4, -0.05, True, False), (x1 - 1.2, 1.5, 0.08, True, True))
+    for i, (x, y, ang, awn, mast) in enumerate(specs):
+        boats.append(boat("RBoat%d" % i, x, y, ang, P, awning=awn, mast=mast))
+    # 纤夫拉纤: 岸上一排人 + 一条缆绳
+    tx = x0 + 4.0
+    for i in range(4):
+        people.append((tx + i * 0.8, -(RIVER_HALF + 0.65), BANK_H + 0.05))
+    box("TowRope", (4.6, 0.05, 0.05), P["cloth"], (tx + 1.2, -(RIVER_HALF + 0.6), BANK_H + 0.4),
+        (0, 0, -0.16))
+
+
+def city_section(P, people, boats):
+    """城内街市段: 城门楼、密集店铺、酒楼欢门、轿子牛车骆驼、稠密人流。"""
+    x0, x1 = SEC_CITY
+    city_gate(GATE_X, P, people)
+    for i in range(9):
+        x = x0 + 1.2 + i * 2.8
+        if abs(x - GATE_X) < 2.6:
+            continue
+        house(x, -(RIVER_HALF + 4.5), -1, P, two_story=(i % 2 == 0), shop=True)
+    for i in range(9):
+        house(x0 + 2.2 + i * 2.8, RIVER_HALF + 3.8, 1, P,
+              two_story=(i % 2 == 1), shop=True)
+    # 酒楼 + 彩楼欢门
+    hx = x0 + 8.5
+    house(hx, -(RIVER_HALF + 5.0), -1, P, two_story=True, shop=True)
+    for sy in (-0.9, 0.9):
+        cyl("HuanmenPost%d" % int(sy * 10), 0.07, 0.07, 3.0, P["red"],
+            (hx + sy, -(RIVER_HALF + 2.6), BANK_H + 1.5))
+    box("HuanmenBeam", (2.1, 0.12, 0.22), P["red"], (hx, -(RIVER_HALF + 2.6), BANK_H + 3.0))
+    box("HuanmenSign", (1.2, 0.1, 0.5), P["banner"], (hx, -(RIVER_HALF + 2.55), BANK_H + 2.6))
+    for x in (x0 + 4.0, x0 + 12.0, x1 - 4.0):
+        stall(x, -(RIVER_HALF + 1.5), -1, P, people)
+    for x in (x0 + 6.5, x0 + 14.5):
+        stall(x, RIVER_HALF + 1.5, 1, P, people)
+    palanquin(x0 + 3.2, -(RIVER_HALF + 1.2), P, people)
+    ox_cart(x0 + 11.0, -(RIVER_HALF + 2.0), P, people)
+    caravan(x1 - 7.0, -(RIVER_HALF + 2.1), P, people, n=3, kind="camel")
+    for i, (x, y, ang) in enumerate(((x0 + 3.0, -1.6, 0.04), (x0 + 9.0, 1.7, -0.06),
+                                     (x1 - 5.5, -1.8, 0.02))):
+        boats.append(boat("CBoat%d" % i, x, y, ang, P, awning=True, mast=False))
+    for i in range(34):                      # 城里人多
+        side = -1 if i % 3 else 1
+        people.append((RNG.uniform(x0, x1),
+                       side * (RIVER_HALF + RNG.uniform(0.9, 2.6)), BANK_H + 0.05))
+
+
+# __APPEND__2
 
 
 def rainbow_bridge(x0, P, people):
@@ -230,7 +419,7 @@ def house(x, y, side, P, two_story=False, shop=False):
             scale=(1.0, 1.0, 1.15))
 
 
-def boat(name, x, y, ang, P, people, awning=True, mast=False):
+def boat(name, x, y, ang, P, awning=True, mast=False):
     """平底货船: 船身 + 翘起的船头船尾 + 篷 + 船工。"""
     parts = []
     parts.append(box(name + "Hull", (2.9, 0.95, 0.34), P["wood"], (x, y, 0.06), (0, 0, ang)))
@@ -251,8 +440,10 @@ def boat(name, x, y, ang, P, people, awning=True, mast=False):
     if mast:
         parts.append(cyl(name + "Mast", 0.06, 0.05, 2.6, P["wood"], (x, y, 1.4)))
         parts.append(box(name + "Sail", (0.08, 0.9, 1.5), P["cloth"], (x, y, 1.75), (0, 0, ang)))
-    people.append((x - 1.0 * math.cos(ang), y - 1.0 * math.sin(ang), 0.30))
-    people.append((x + 0.9 * math.cos(ang), y + 0.9 * math.sin(ang), 0.30))
+    # 船工直接建出来并入构件, 才能跟着船一起漂
+    for k, off in enumerate((-1.0, 0.9)):
+        parts += person(hash(name) % 900 + k, x + off * math.cos(ang),
+                        y + off * math.sin(ang), 0.30, P)
     return parts
 
 
@@ -280,50 +471,29 @@ def stall(x, y, side, P, people):
     people.append((x, y - side * 0.75, BANK_H + 0.05))
 
 
+def person(idx, x, y, z, P):
+    """单个低多边形小人: 身体 + 头 (三分之一戴斗笠), 返回构件方便跟船一起动。"""
+    c = PEOPLE_COLORS[idx % len(PEOPLE_COLORS)]
+    body_m = mat("Robe%d" % idx, c, roughness=0.7)
+    parts = [cyl("Body%d" % idx, 0.105, 0.075, 0.34, body_m, (x, y, z + 0.17), verts=7),
+             ico("Head%d" % idx, 0.075, P["skin"], (x, y, z + 0.40), subdiv=1)]
+    if idx % 3 == 0:
+        parts.append(cyl("Hat%d" % idx, 0.17, 0.02, 0.09, P["thatch"],
+                         (x, y, z + 0.47), verts=8))
+    return parts
+
+
 def crowd(P, spots):
-    """一堆低多边形小人: 身体 + 头 + 一半戴斗笠。"""
     for i, (x, y, z) in enumerate(spots):
-        c = PEOPLE_COLORS[i % len(PEOPLE_COLORS)]
-        body_m = mat("Robe%d" % i, c, roughness=0.7)
-        cyl("Body%d" % i, 0.105, 0.075, 0.34, body_m, (x, y, z + 0.17), verts=7)
-        ico("Head%d" % i, 0.075, P["skin"], (x, y, z + 0.40), subdiv=1)
-        if i % 3 == 0:
-            cyl("Hat%d" % i, 0.17, 0.02, 0.09, P["thatch"], (x, y, z + 0.47), verts=8)
+        person(1000 + i, x, y, z, P)
 
 
 def build_town(P):
-    people = []
+    people, boats = [], []
     terrain(P)
-    rainbow_bridge(0.0, P, people)
-    for i in range(9):                      # 近岸 (朝镜头) 屋舍
-        x = -14.5 + i * 2.9
-        if abs(x) < 2.2:
-            continue
-        house(x, -(RIVER_HALF + 4.3), -1, P, two_story=(i % 4 == 1), shop=(i % 2 == 0))
-    for i in range(9):                      # 对岸屋舍
-        x = -13.2 + i * 2.9
-        if abs(x) < 2.2:
-            continue
-        house(x, RIVER_HALF + 3.6, 1, P, two_story=(i % 3 == 0), shop=(i % 2 == 1))
-    for x in (-11.5, -6.4, 3.2, 7.4):
-        stall(x, -(RIVER_HALF + 1.4), -1, P, people)
-    for x in (-9.0, -3.6, 5.6):
-        stall(x, RIVER_HALF + 1.4, 1, P, people)
-    for x in (-13.0, -8.2, -4.4, 2.6, 6.2, 9.4):
-        willow(x, -(RIVER_HALF + 0.9), P)
-    for x in (-11.0, -5.4, 1.8, 8.0):
-        willow(x, RIVER_HALF + 0.9, P)
-    boats = []
-    for i, (x, y, ang, awn, mast) in enumerate((
-            (-10.5, -1.1, 0.06, True, True), (-6.0, 1.3, -0.10, True, False),
-            (-1.2, -0.6, 0.04, False, True), (2.8, 1.0, 0.12, True, False),
-            (7.2, -1.3, -0.05, True, False))):
-        boats.append(boat("Boat%d" % i, x, y, ang, P, people, awning=awn, mast=mast))
-    for i in range(26):                     # 街上散客
-        side = -1 if i % 2 else 1
-        people.append((RNG.uniform(-14.5, 9.5),
-                       side * (RIVER_HALF + RNG.uniform(0.9, 2.4)),
-                       BANK_H + 0.05))
+    rural_section(P, people)
+    river_section(P, people, boats)
+    city_section(P, people, boats)
     crowd(P, people)
     log("people=%d boats=%d objects=%d" % (len(people), len(boats), len(bpy.data.objects)))
     return boats
@@ -368,7 +538,7 @@ def animate(cam, boats, frames):
     for frame, x in ((1, SCROLL_FROM), (frames, SCROLL_TO)):
         cam.location.x = x
         cam.keyframe_insert("location", frame=frame)
-    drift = -1.6 * SECONDS / 3.0
+    drift = -0.12 * SECONDS                 # 船漂得比镜头慢很多, 免得离开自己的船工
     for parts in boats:
         for obj in parts:
             x0 = obj.location.x
